@@ -12,13 +12,32 @@ jwt = JWTManager()
 
 swagger_template = {
     "swagger": "2.0",
-    "info": {"title": "User API", "version": "1.0.0"},
-    "basePath": "/"
+    "info": {
+        "title": "User API",
+        "version": "1.0.0",
+        "description": "API para autenticação e gerenciamento de usuários."
+    },
+    "basePath": "/",
+}
+
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": 'apispec_1',
+            "route": '/apispec_1.json',
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "swagger_ui": True,
+    "specs_route": "/apidocs/",
 }
 
 def create_app():
     load_dotenv()
     app = Flask(__name__)
+
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'secret')
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'jwt-secret')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///local.db')
@@ -27,20 +46,14 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-    Swagger(app, template=swagger_template)
+    Swagger(app, template=swagger_template, config=swagger_config)
 
-    # Importa e registra os blueprints
+    # Rotas
     from .routes.auth import bp as auth_bp
     from .routes.users import bp as users_bp
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(users_bp, url_prefix="/users")
 
-    # 🔹 Cria as tabelas automaticamente na inicialização (se não existirem)
-    with app.app_context():
-        from .models.user import User  # ajuste conforme o nome real do seu arquivo de modelo
-        db.create_all()
-
-    # Endpoint de verificação
     @app.get("/health")
     def health():
         return {"status": "ok"}
